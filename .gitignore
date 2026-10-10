@@ -1,0 +1,14 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# Local data files and generated outputs (so you don't push massive raw datasets)
+data/*.csv
+data/*.lst
+outputs/*.csv
