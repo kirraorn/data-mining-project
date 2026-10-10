@@ -8,7 +8,5 @@ venv/
 env/
 ENV/
 
-# Local data files and generated outputs (so you don't push massive raw datasets)
-data/*.csv
-data/*.lst
+# Local generated outputs
 outputs/*.csv
