@@ -7,6 +7,8 @@ Course: CIS 4930 Fall 2026
 
 import time
 from src.p1_preprocess import run_preprocessing
+from src.p2_clustering import run_clustering
+from src.p2_b_analyze_clusters import run_cluster_analysis
 
 def main():
     print("----------------------------------------")
@@ -21,8 +23,12 @@ def main():
     run_preprocessing()
 
     # put clusturing, anomoalyr, and rule extraction here
-    # print("Running clustering...")
-    # ... clustering code ...
+    print("Running clustering...")
+    run_clustering()
+
+    print("Running cluster analysis and generating figures...")
+    # (Assuming your analysis code is wrapped in a function, or you execute it here)
+    run_cluster_analysis()
 
     # print("Running anomaly detection...")
     # ... anomaly detection code ...

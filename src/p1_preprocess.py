@@ -14,10 +14,9 @@ def run_preprocessing():
 
     # If path isn't there
     if not os.path.exists(data_path):
-        print(f"Error: Data file not found at {data_path}. Please ensure the data file is present.")
+        print(f"Error: Data file not found")
         return
 
-    # Load whitespace-separated OMNIWeb data with no header row
     column_names = [
         'YEAR', 'DOY', 'HR', 
         'ABS_B', 'BX', 'BY', 'BZ', 'PARAM_5', 'PARAM_6', 
@@ -25,7 +24,7 @@ def run_preprocessing():
     ]
     
     df = pd.read_csv(data_path, sep=r'\s+', header=None, names=column_names, engine='python')
-    print(f"   Data loaded successfully ({len(df)} rows)")
+    print(f"   Data loaded successfully")
 
     # Replace missing values with NaN and interpolate linearly
     df.replace([999.9, 99.9, 9999.9, 99999.0, 999.0, 99.0], np.nan, inplace=True)
