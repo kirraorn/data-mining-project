@@ -34,8 +34,8 @@ data-mining-project/
 │   ├── p1_preprocess.py              # Feature engineering & rolling window calculations
 │   ├── p2_cluster.py                 # k-Means parameter sweeps & model fitting
 │   └── p2_b_analyze_clusters.py      # Profiling, PCA projection, & figure generation
-│   └── p3_anomaly.py                 # 
-│   └── p4_rules.py                   # 
+│   └── p3_anomaly.py                 # Flags anomalies with Isolation Forest on rolling window features
+│   └── p4_rules.py                   # Extracts decision rules using Decision Trees
 ├── main.py                           # Single-entry pipeline orchestration script
 ├── requirements.txt                  # Python environment dependencies
 └── README.md                         # Project documentation

@@ -5,7 +5,7 @@ Implements k-Means parameter sweeps (k=2 to 10), optimization metrics
 """
 
 import pandas as pd
-import numpy as np
+import numpy as npa
 import os
 from sklearn.preprocessing import StandardScaler
 from sklearn.cluster import KMeans

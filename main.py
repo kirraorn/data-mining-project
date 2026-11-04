@@ -9,6 +9,8 @@ import time
 from src.p1_preprocess import run_preprocessing
 from src.p2_clustering import run_clustering
 from src.p2_b_analyze_clusters import run_cluster_analysis
+from src.p3_anomaly import run_anomaly_detection
+from src.p4_rules import run_rule_extraction
 
 def main():
     print("----------------------------------------")
@@ -30,11 +32,11 @@ def main():
     # (Assuming your analysis code is wrapped in a function, or you execute it here)
     run_cluster_analysis()
 
-    # print("Running anomaly detection...")
-    # ... anomaly detection code ...
+    print("Running anomaly detection...")
+    run_anomaly_detection()
 
-    # print("Running rule extraction...")
-    # ... rule extraction code ...
+    print("Running rule extraction...")
+    run_rule_extraction()
 
     elapsed_time = time.time() - start_time
     print("--------------------------------------------------")
