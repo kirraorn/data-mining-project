@@ -1,0 +1,76 @@
+RULE COMPARISON: DECISION TREES VS. LEPPING-STYLE THRESHOLDS
+==================================================================
+
+A. Lepping-style rule (fixed in advance; approximate - see src/p7_compare_rules.py)
+    ABS_B_roll_mean_6h >= 10.0
+    PLASMA_BETA_roll_mean_6h <= 0.5
+    ABS_B_roll_std_6h <= 2.0
+
+B. The report's tree (depth 4, fit to the k-Means cluster ids)
+    Identical to the tree saved by src/p4_rules.py: True
+    Reproduces the k-Means labels with 92.7% accuracy (trained and scored on all hours, as in the report)
+    Root split: ABS_B_roll_mean_3h <= 7.45. Report says hours above it 'connect directly towards Cluster 0':
+        cluster 0:  71.0% of the 4922 hours above the split
+        cluster 1:  26.1% of the 4922 hours above the split
+        cluster 2:   0.1% of the 4922 hours above the split
+        cluster 3:   2.8% of the 4922 hours above the split
+        cluster 4:   0.0% of the 4922 hours above the split
+
+    Leaves predicting cluster 0 (the cluster that best detects ICME and CIR/HSS on the training period):
+    ABS_B_roll_mean_3h > 7.45 AND PROTON_DENSITY_roll_std_24h > 2.071 AND ABS_B_roll_std_6h > 0.7015 AND PLASMA_BETA_roll_mean_3h <= 170.3
+        [2467 h; 95% in target cluster; 32% catalog ICME; 30% catalog CIR/HSS]
+    ABS_B_roll_mean_3h <= 7.45 AND PROTON_DENSITY_roll_std_24h > 3.413 AND ABS_B_roll_std_6h > 0.7812 AND BY_roll_std_6h > 1.739
+        [589 h; 83% in target cluster; 9% catalog ICME; 25% catalog CIR/HSS]
+    ABS_B_roll_mean_3h > 7.45 AND PROTON_DENSITY_roll_std_24h > 2.071 AND ABS_B_roll_std_6h <= 0.7015 AND ABS_B_roll_mean_6h > 9.525
+        [424 h; 91% in target cluster; 54% catalog ICME; 18% catalog CIR/HSS]
+    ABS_B_roll_mean_3h > 7.45 AND PROTON_DENSITY_roll_std_24h <= 2.071 AND PLASMA_BETA_roll_mean_3h <= 168.1 AND ABS_B > 10.05
+        [281 h; 80% in target cluster; 35% catalog ICME; 19% catalog CIR/HSS]
+    Term by term vs. Lepping-style:
+    ABS_B_roll_mean_6h >= 10.0  ->  tree uses: ABS_B, ABS_B_roll_mean_3h, ABS_B_roll_mean_6h, ABS_B_roll_std_6h
+    PLASMA_BETA_roll_mean_6h <= 0.5  ->  tree uses: PLASMA_BETA_roll_mean_3h
+    ABS_B_roll_std_6h <= 2.0  ->  tree uses: ABS_B, ABS_B_roll_mean_3h, ABS_B_roll_mean_6h, ABS_B_roll_std_6h
+    Tree-only terms (not in the Lepping-style rule): BY_roll_std_6h, PROTON_DENSITY_roll_std_24h
+    NOTE: the tree's beta thresholds (168.1, 170.3) are far above Lepping's low-beta criterion (~0.5). They separate OMNI fill-value rows (beta = 999.99), so they are not a physical low-beta test.
+    Caveat: this tree describes k-Means clusters, not catalog events, and k-Means clusters 2-4 are mostly OMNI fill values, so some leaves encode data-quality artifacts rather than physics.
+
+C. Catalog-label tree, depth 4 (quiet / ICME / CIR-HSS; trained before 2013-07-01)
+    Test-period 3-class accuracy: 71.5% (train 77.9%)
+
+    Leaves predicting ICME (training hours):
+    ABS_B > 6.85 AND TEMP <= 1.234e+05 AND PLASMA_BETA_roll_mean_6h > 0.8258 AND ABS_B_roll_std_24h <= 2.637
+        [863 h; 20% truly ICME]
+    ABS_B > 6.85 AND TEMP <= 1.234e+05 AND PLASMA_BETA_roll_mean_6h <= 0.8258 AND ABS_B_roll_mean_24h > 8.09
+        [531 h; 81% truly ICME]
+    ABS_B > 6.85 AND TEMP <= 1.234e+05 AND PLASMA_BETA_roll_mean_6h <= 0.8258 AND ABS_B_roll_mean_24h <= 8.09
+        [463 h; 38% truly ICME]
+    ABS_B > 6.85 AND TEMP <= 1.234e+05 AND PLASMA_BETA_roll_mean_6h > 0.8258 AND ABS_B_roll_std_24h > 2.637
+        [171 h; 62% truly ICME]
+    ABS_B <= 6.85 AND FLOW_SPEED_roll_mean_3h <= 459.2 AND PROTON_DENSITY_roll_std_24h > 5.212 AND PLASMA_BETA_roll_std_24h > 2.299
+        [126 h; 49% truly ICME]
+    ABS_B > 6.85 AND TEMP > 1.234e+05 AND ABS_B_roll_std_6h > 2.586 AND PROTON_DENSITY_roll_std_24h <= 8.161
+        [119 h; 70% truly ICME]
+    ABS_B <= 6.85 AND FLOW_SPEED_roll_mean_3h > 459.2 AND TEMP_roll_std_24h > 1.952e+05 AND TEMP_roll_mean_24h <= 3.855e+05
+        [51 h; 86% truly ICME]
+    ABS_B > 6.85 AND TEMP > 1.234e+05 AND ABS_B_roll_std_6h <= 2.586 AND PLASMA_BETA_roll_mean_6h <= 0.4858
+        [51 h; 47% truly ICME]
+    Term by term vs. Lepping-style:
+    ABS_B_roll_mean_6h >= 10.0  ->  tree uses: ABS_B, ABS_B_roll_mean_24h, ABS_B_roll_std_24h, ABS_B_roll_std_6h
+    PLASMA_BETA_roll_mean_6h <= 0.5  ->  tree uses: PLASMA_BETA_roll_mean_6h, PLASMA_BETA_roll_std_24h
+    ABS_B_roll_std_6h <= 2.0  ->  tree uses: ABS_B, ABS_B_roll_mean_24h, ABS_B_roll_std_24h, ABS_B_roll_std_6h
+    Tree-only terms (not in the Lepping-style rule): FLOW_SPEED_roll_mean_3h, PROTON_DENSITY_roll_std_24h, TEMP, TEMP_roll_mean_24h, TEMP_roll_std_24h
+
+    Leaves predicting CIR/HSS (training hours):
+    ABS_B <= 6.85 AND FLOW_SPEED_roll_mean_3h > 459.2 AND TEMP_roll_std_24h <= 1.952e+05 AND FLOW_SPEED_roll_mean_24h > 500.9
+        [1240 h; 80% truly CIR/HSS]
+    ABS_B <= 6.85 AND FLOW_SPEED_roll_mean_3h > 459.2 AND TEMP_roll_std_24h <= 1.952e+05 AND FLOW_SPEED_roll_mean_24h <= 500.9
+        [791 h; 39% truly CIR/HSS]
+    ABS_B > 6.85 AND TEMP > 1.234e+05 AND ABS_B_roll_std_6h <= 2.586 AND PLASMA_BETA_roll_mean_6h > 0.4858
+        [701 h; 54% truly CIR/HSS]
+    ABS_B <= 6.85 AND FLOW_SPEED_roll_mean_3h <= 459.2 AND PROTON_DENSITY_roll_std_24h > 5.212 AND PLASMA_BETA_roll_std_24h <= 2.299
+        [88 h; 44% truly CIR/HSS]
+    ABS_B > 6.85 AND TEMP > 1.234e+05 AND ABS_B_roll_std_6h > 2.586 AND PROTON_DENSITY_roll_std_24h > 8.161
+        [20 h; 85% truly CIR/HSS]
+
+    Variables that separate ICME leaves from CIR/HSS leaves:
+      ICME only   : ABS_B_roll_mean_24h, ABS_B_roll_std_24h, TEMP_roll_mean_24h
+      CIR/HSS only: FLOW_SPEED_roll_mean_24h

@@ -1,12 +1,18 @@
 # NASA OMNI Solar Wind Data Mining Pipeline
 
-An end-to-end unsupervised machine learning and feature engineering pipeline designed to cluster and analyze NASA OMNI solar wind telemetry data. This project uses k-Means clustering and parameter sweeps ($k \in [2, 10]$) evaluated via the Davies-Bouldin Index to discover physical space weather regimes and structural telemetry anomalies.
+An end-to-end unsupervised machine learning and feature engineering pipeline designed to cluster and analyze NASA OMNI solar wind telemetry data. This project uses k-Means clustering and parameter sweeps ($k \in [2, 10]$) evaluated via the Davies-Bouldin Index to discover physical space weather regimes and structural telemetry anomalies, then compares the results against expert event catalogs, historical threshold rules, and a supervised Random Forest.
 
 ---
 
 ## 📌 Project Overview
 
-Space weather events—such as Coronal Mass Ejections (CMEs) and Stream Interaction Regions (SIRs)—exert significant influence on Earth's magnetosphere and satellite infrastructure. This pipeline automates the extraction, rolling feature engineering, unsupervised clustering, and dimensionality reduction (PCA) of 26,000+ hourly observations from NASA's OMNI dataset.
+Space weather events—such as Coronal Mass Ejections (CMEs) and Stream Interaction Regions (SIRs)—exert significant influence on Earth's magnetosphere and satellite infrastructure. This pipeline automates the extraction, rolling feature engineering, unsupervised clustering, and dimensionality reduction (PCA) of 26,000+ hourly observations from NASA's OMNI dataset (2012–2014).
+
+The comparison stages (p5–p8) answer three questions:
+
+1. **Do the clusters and anomalies line up with catalogued events?** (ICMEs and CIR/high-speed-stream intervals)
+2. **How do the decision-tree rules compare with Lepping-style thresholds?**
+3. **How far behind a supervised Random Forest are the unsupervised methods?**
 
 ---
 
@@ -22,20 +28,25 @@ Space weather events—such as Coronal Mass Ejections (CMEs) and Stream Interact
 
 ```text
 data-mining-project/
-├── data/                             # Raw telemetry data (NASA OMNI)
-│   └── omni_raw_data.csv
+├── data/
+│   ├── omni_data.csv                 # Raw telemetry data (NASA OMNI hourly, 2012-2014)
+│   └── catalogs/                     # Event catalogs used as ground truth (see its README.md)
+│       ├── HELIO4CAST_ICMECAT_v23.csv
+│       ├── HELIO4CAST_SIRCAT_v10_Wind.csv
+│       ├── cir_catalog_TEMPLATE.csv  # format for an optional cir_catalog.csv
+│       └── README.md                 # provenance, citations, how the labels are built
 ├── outputs/                          # Pipeline outputs, metrics, and figures
-│   ├── processed_omni_features.csv
-│   ├── cluster_evaluation_metrics.csv
-│   ├── omni_clustered_results.csv
-│   ├── k_means_sweep_evaluation.png
-│   └── pca_cluster_projection.png
 ├── src/                              # Source code modules
 │   ├── p1_preprocess.py              # Feature engineering & rolling window calculations
-│   ├── p2_cluster.py                 # k-Means parameter sweeps & model fitting
-│   └── p2_b_analyze_clusters.py      # Profiling, PCA projection, & figure generation
-│   └── p3_anomaly.py                 # Flags anomalies with Isolation Forest on rolling window features
-│   └── p4_rules.py                   # Extracts decision rules using Decision Trees
+│   ├── p2_clustering.py              # k-Means parameter sweeps & model fitting
+│   ├── p2_b_analyze_clusters.py      # Profiling, PCA projection, & figure generation
+│   ├── p3_anomaly.py                 # Flags anomalies with Isolation Forest on rolling window features
+│   ├── p4_rules.py                   # Extracts decision rules using Decision Trees
+│   ├── compare_utils.py              # Event-level metrics, train/test split, score log (shared)
+│   ├── p5_catalogs.py                # Comparison data: ICME and CIR/HSS catalogs -> per-hour labels
+│   ├── p6_compare_clusters_anomalies.py  # Comparison 1: clusters & anomalies vs. catalogs
+│   ├── p7_compare_rules.py           # Comparison 2: tree rules vs. Lepping-style thresholds
+│   └── p8_compare_supervised.py      # Comparison 3: Random Forest vs. unsupervised, final tables
 ├── main.py                           # Single-entry pipeline orchestration script
 ├── requirements.txt                  # Python environment dependencies
 └── README.md                         # Project documentation
@@ -53,7 +64,7 @@ data-mining-project/
 
 1. **Clone the Repository:**
    ```bash
-   git clone https://github.com/your-username/data-mining-project.git
+   git clone https://github.com/kirraorn/data-mining-project.git
    cd data-mining-project
    ```
 
@@ -74,8 +85,29 @@ data-mining-project/
    pip install -r requirements.txt
    ```
 
-4. **Run Program:**
-```bash
-python main.py
-```
+4. **Run Program** (about 1 minute):
+   ```bash
+   python main.py
+   ```
 
+---
+
+## 📊 Reading the results
+
+Everything is written to `outputs/` (CSV files are git-ignored; they are regenerated by `main.py`).
+
+| Question | Files |
+|---|---|
+| Clusters vs. catalogs | `matching_matrix_kmeans.png/.csv`, `overlay_*.png`, `cluster_detector_scores.csv` |
+| Anomalies vs. catalogs | `if_contamination_sweep.png/.csv`, `cluster_vs_anomaly.csv`, `uncataloged_anomalies.csv` |
+| Rules vs. Lepping | `rules_comparison.txt`, `catalog_decision_rules.txt`, `catalog_tree_confusion_test.csv` |
+| Supervised vs. unsupervised | `classification_comparison_test.csv`, `final_comparison_<ICME or CIR-HSS>_<test or full>.csv/.md/.png`, `rf_feature_importance.csv` |
+| Data for further comparisons | `comparison_dataset.csv` (one row per hour: labels + every method's output), `event_labels.csv` |
+
+### Method notes
+
+- **Ground truth:** ICMEs from the HELIO4CAST ICMECAT v2.3 (Wind). CIR/HSS intervals are Wind high-speed streams from the HELIO4CAST SIRCAT, a *proxy* for the Hajra & Sunny CIR list (see `data/catalogs/README.md`).
+- **Event-level scoring:** a predicted event matches a catalog event when their temporal intersection-over-union is ≥ 0.1; predicted runs bridge gaps ≤ 3 h and need ≥ 3 h. `hour_lift` shows precision relative to the catalog base rate (1.0 = no better than chance).
+- **Train/test split:** supervised models train before 2013-07-01 and are scored after it (48 h gap). Unsupervised clusters used as detectors are chosen on the training period only. Compare methods on the *test* tables.
+- **Lepping-style thresholds** (`src/p7_compare_rules.py`) are conventional values fixed in advance, not copied from Lepping et al. (2005).
+- **Known limitation:** `p1_preprocess.py` leaves some OMNI fill codes (flow speed 9999, temperature 9999999, plasma beta 999.99) unmasked, so k-Means clusters 2–4 are mostly fill rows. The matching matrix reports the share of fill rows per cluster (`pct_fill_rows`).
