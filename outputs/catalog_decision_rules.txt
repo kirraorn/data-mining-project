@@ -1,0 +1,46 @@
+|--- ABS_B <= 6.85
+|   |--- FLOW_SPEED_roll_mean_3h <= 459.17
+|   |   |--- PROTON_DENSITY_roll_std_24h <= 5.21
+|   |   |   |--- PROTON_DENSITY_roll_std_3h <= 0.72
+|   |   |   |   |--- class: 0
+|   |   |   |--- PROTON_DENSITY_roll_std_3h >  0.72
+|   |   |   |   |--- class: 0
+|   |   |--- PROTON_DENSITY_roll_std_24h >  5.21
+|   |   |   |--- PLASMA_BETA_roll_std_24h <= 2.30
+|   |   |   |   |--- class: 2
+|   |   |   |--- PLASMA_BETA_roll_std_24h >  2.30
+|   |   |   |   |--- class: 1
+|   |--- FLOW_SPEED_roll_mean_3h >  459.17
+|   |   |--- TEMP_roll_std_24h <= 195194.73
+|   |   |   |--- FLOW_SPEED_roll_mean_24h <= 500.88
+|   |   |   |   |--- class: 2
+|   |   |   |--- FLOW_SPEED_roll_mean_24h >  500.88
+|   |   |   |   |--- class: 2
+|   |   |--- TEMP_roll_std_24h >  195194.73
+|   |   |   |--- TEMP_roll_mean_24h <= 385452.36
+|   |   |   |   |--- class: 1
+|   |   |   |--- TEMP_roll_mean_24h >  385452.36
+|   |   |   |   |--- class: 0
+|--- ABS_B >  6.85
+|   |--- TEMP <= 123423.00
+|   |   |--- PLASMA_BETA_roll_mean_6h <= 0.83
+|   |   |   |--- ABS_B_roll_mean_24h <= 8.09
+|   |   |   |   |--- class: 1
+|   |   |   |--- ABS_B_roll_mean_24h >  8.09
+|   |   |   |   |--- class: 1
+|   |   |--- PLASMA_BETA_roll_mean_6h >  0.83
+|   |   |   |--- ABS_B_roll_std_24h <= 2.64
+|   |   |   |   |--- class: 1
+|   |   |   |--- ABS_B_roll_std_24h >  2.64
+|   |   |   |   |--- class: 1
+|   |--- TEMP >  123423.00
+|   |   |--- ABS_B_roll_std_6h <= 2.59
+|   |   |   |--- PLASMA_BETA_roll_mean_6h <= 0.49
+|   |   |   |   |--- class: 1
+|   |   |   |--- PLASMA_BETA_roll_mean_6h >  0.49
+|   |   |   |   |--- class: 2
+|   |   |--- ABS_B_roll_std_6h >  2.59
+|   |   |   |--- PROTON_DENSITY_roll_std_24h <= 8.16
+|   |   |   |   |--- class: 1
+|   |   |   |--- PROTON_DENSITY_roll_std_24h >  8.16
+|   |   |   |   |--- class: 2
