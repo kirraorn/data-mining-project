@@ -29,7 +29,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, f1_score, precisio
 from src.compare_utils import (CLASS_OF, OUT_DIR, SCORES_PATH, TARGET_NAMES, TIME_COLS,
                                enrichment_map, fill_flag, hour_timestamps, record_score)
 from src.p5_catalogs import get_context
-from src.p7_compare_rules import fit_catalog_tree, fit_paper_tree, lepping_style_mask
+from src.p7_compare_rules import fit_catalog_tree, fit_paper_tree, lepping_partial_masks
 
 TABLE_COLS = ["method", "event_precision", "event_recall", "event_f1", "hour_precision",
               "hour_recall", "hour_f1", "hour_lift", "n_pred_events", "n_catalog_events"]
@@ -155,7 +155,9 @@ def run_supervised_comparison():
     ds["REPORT_TREE_CLUSTER"] = paper_cluster
     ds["IF_ANOMALY"] = (an["ANOMALY_PRED"].to_numpy() == -1).astype(int)
     ds["IF_SCORE"] = an["ANOMALY_SCORE"].to_numpy()
-    ds["LEPPING_FLAG"] = lepping_style_mask(df).astype(int)
+    lepping_masks = lepping_partial_masks(df)
+    ds["LEPPING_LOOSE_PARTIAL"] = lepping_masks["Loose"].astype(int)
+    ds["LEPPING_STRICT_PARTIAL"] = lepping_masks["Strict"].astype(int)
     ds["CATALOG_TREE_CLASS"] = np.where(ds["SPLIT"] == "test", ct_pred, -1)
     ds["RF_CLASS"] = np.where(ds["SPLIT"] == "test", rf_pred, -1)
     ds.to_csv(os.path.join(OUT_DIR, "comparison_dataset.csv"), index=False)

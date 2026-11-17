@@ -3,10 +3,10 @@ Stage 7 - Comparison 2: decision-tree rules vs. Lepping-style thresholds.
 (Paper: "Compare decision tree rules against historical thresholds (Lepping)".)
 
 Three rule sets are compared term by term:
-  A. Lepping-style thresholds (the proposal's non-ML baseline). The proposal gives no numeric cut-offs
-     and the numbers below were NOT copied from Lepping et al. (2005): they are conventional
-     magnetic-cloud-like values fixed in advance (never tuned on the catalog). Check them against the
-     paper before citing, and describe them in the report as an approximation.
+  A. Lepping et al. (2005) magnetic-cloud criteria. Partial hourly-data screens use the paper's
+     event-average |B| limits (7/8 nT), beta limit (0.3), and minimum duration (8 h). Since OMNI
+     inputs here are hourly, the published 25/30-minute beta windows and directional smoothness
+     criteria cannot be reproduced. These screens are explicitly not the full Lepping detector.
   B. The REPORT'S tree (src/p4_rules.py): depth 4, fit to the k-Means cluster ids. It is refit here
      with identical settings and checked against outputs/extracted_decision_rules.txt. Its leaves for
      the cluster that best matches each catalog class become explicit rules.
@@ -29,19 +29,36 @@ from sklearn.tree import DecisionTreeClassifier, export_text
 from src.compare_utils import CLASS_OF, OUT_DIR, TARGET_NAMES, TIME_COLS, best_cluster, record_score
 from src.p5_catalogs import get_context
 
-# ---- Lepping-style thresholds, applied to 6-hour rolling features ------------------------------
-LEPPING_STYLE = {
-    "ABS_B_roll_mean_6h": (">=", 10.0),        # enhanced field magnitude, nT
-    "PLASMA_BETA_roll_mean_6h": ("<=", 0.5),   # low plasma beta
-    "ABS_B_roll_std_6h": ("<=", 2.0),          # smooth field (small short-term variability), nT
+# ---- Lepping (2005) thresholds that can be approximated with hourly OMNI -----------------------
+LEPPING_SETS = {
+    "Loose": {"abs_b_min": 7.0, "beta_max": 0.3},
+    "Strict": {"abs_b_min": 8.0, "beta_max": 0.3},
 }
+LEPPING_MIN_HOURS = 8
 
 
-def lepping_style_mask(df):
-    mask = np.ones(len(df), dtype=bool)
-    for col, (op, thr) in LEPPING_STYLE.items():
-        mask &= (df[col] >= thr) if op == ">=" else (df[col] <= thr)
-    return mask.to_numpy()
+def _long_runs(mask, min_hours=LEPPING_MIN_HOURS):
+    """Keep only true runs lasting at least min_hours; input is one sample per hour."""
+    mask = np.asarray(mask, dtype=bool)
+    edges = np.diff(np.r_[False, mask, False].astype(int))
+    starts, ends = np.flatnonzero(edges == 1), np.flatnonzero(edges == -1)
+    result = np.zeros(mask.size, dtype=bool)
+    for start, end in zip(starts, ends):
+        if end - start >= min_hours:
+            result[start:end] = True
+    return result
+
+
+def lepping_partial_masks(df):
+    """Partial hourly proxies; do not interpret these as the full published MC detector."""
+    b = df["ABS_B"].rolling(LEPPING_MIN_HOURS, min_periods=LEPPING_MIN_HOURS).mean()
+    # Hourly beta cannot evaluate Lepping's 25/30-minute running-window criterion.
+    beta_hourly = df["PLASMA_BETA"]
+    masks = {}
+    for label, limits in LEPPING_SETS.items():
+        raw = (b >= limits["abs_b_min"]) & (beta_hourly <= limits["beta_max"])
+        masks[label] = _long_runs(raw.fillna(False).to_numpy())
+    return masks
 
 
 # ----------------------------------------------------------------------------- tree helpers
@@ -95,20 +112,21 @@ def _vars_used(paths):
 
 def _term_by_term(used):
     lines = []
-    for col, (op, thr) in LEPPING_STYLE.items():
-        base = col.split("_roll")[0]
+    comparable = [("ABS_B", "event-wide mean |B| >= 7/8 nT (loose/strict)"),
+                  ("PLASMA_BETA", "beta <= 0.3 (paper: 25/30-minute running means)")]
+    for base, criterion in comparable:
         related = sorted({v for v in used if v.startswith(base)})
-        lines.append(f"    {col} {op} {thr}  ->  tree uses: "
+        lines.append(f"    Lepping {criterion}  ->  tree uses: "
                      f"{', '.join(related) if related else 'nothing comparable'}")
     only = [v for v in sorted(used)
-            if not any(v.startswith(c.split('_roll')[0]) for c in LEPPING_STYLE)]
+            if not any(v.startswith(base) for base, _ in comparable)]
     if only:
-        lines.append(f"    Tree-only terms (not in the Lepping-style rule): {', '.join(only)}")
+        lines.append(f"    Tree-only terms (outside the two comparable Lepping features): {', '.join(only)}")
     beta = [float(m.group(1)) for c in sum((v for k, v in used.items() if k.startswith("PLASMA_BETA")), [])
             for m in [re.search(r"([-\d.e+]+)$", c)] if m]
     if beta and max(beta) > 10:
         lines.append(f"    NOTE: the tree's beta thresholds ({', '.join(f'{b:.4g}' for b in beta)}) are "
-                     "far above Lepping's low-beta criterion (~0.5). They separate OMNI fill-value "
+                     "far above Lepping's beta limit (0.3). They separate OMNI fill-value "
                      "rows (beta = 999.99), so they are not a physical low-beta test.")
     return lines
 
@@ -134,16 +152,24 @@ def run_rule_comparison():
     ctx = get_context()
     df = pd.read_csv(os.path.join(OUT_DIR, "processed_omni_features.csv"))
     feature_cols = [c for c in df.columns if c not in TIME_COLS]
-    out = ["RULE COMPARISON: DECISION TREES VS. LEPPING-STYLE THRESHOLDS", "=" * 66, "",
-           "A. Lepping-style rule (fixed in advance; approximate - see src/p7_compare_rules.py)"]
-    out += [f"    {col} {op} {thr}" for col, (op, thr) in LEPPING_STYLE.items()]
+    out = ["RULE COMPARISON: DECISION TREES VS. LEPPING ET AL. (2005) MC CRITERIA", "=" * 74, "",
+           "A. Partial Lepping criteria screens using the available hourly OMNI data",
+           "    Loose: 8-hour rolling mean ABS_B >= 7 nT; hourly PLASMA_BETA <= 0.3; qualifying run >= 8 h",
+           "    Strict: 8-hour rolling mean ABS_B >= 8 nT; hourly PLASMA_BETA <= 0.3; qualifying run >= 8 h",
+           "    These are partial proxies, not a reproduction of the paper's detector.",
+           "    Source cadence is 1 hour: the paper's 25/30-minute beta windows cannot be computed.",
+           "    Directional rotation, theta_B chi-square smoothness, vector chi_M/<B>, and thermal-speed",
+           "    criteria are not available in the current feature set. ABS_B rolling std is not a substitute."]
 
     # ---- A. Lepping-style detector ----------------------------------------------------------
-    flag = lepping_style_mask(df)
-    for scope in ("full", "test"):
-        record_score("Lepping-style thresholds (non-ML baseline)", "ICME", scope,
-                     ctx.evaluate(flag, "ICME", scope))
-    print(f"    Lepping-style rule flags {int(flag.sum())} hours")
+    lepping_masks = lepping_partial_masks(df)
+    for label, flag in lepping_masks.items():
+        for scope in ("full", "test"):
+            record_score(f"Lepping (2005) {label} partial hourly screen", "ICME", scope,
+                         ctx.evaluate(flag, "ICME", scope))
+        out.append(f"    {label} screen flags {int(flag.sum())} hours")
+    print("    Partial hourly Lepping screens: " + ", ".join(
+        f"{name}={int(mask.sum())} hours" for name, mask in lepping_masks.items()))
 
     # ---- B. the report's tree ---------------------------------------------------------------
     dt, X, y, p_cols, same = fit_paper_tree()

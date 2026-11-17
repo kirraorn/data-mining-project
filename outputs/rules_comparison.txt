@@ -1,10 +1,15 @@
-RULE COMPARISON: DECISION TREES VS. LEPPING-STYLE THRESHOLDS
-==================================================================
+RULE COMPARISON: DECISION TREES VS. LEPPING ET AL. (2005) MC CRITERIA
+==========================================================================
 
-A. Lepping-style rule (fixed in advance; approximate - see src/p7_compare_rules.py)
-    ABS_B_roll_mean_6h >= 10.0
-    PLASMA_BETA_roll_mean_6h <= 0.5
-    ABS_B_roll_std_6h <= 2.0
+A. Partial Lepping criteria screens using the available hourly OMNI data
+    Loose: 8-hour rolling mean ABS_B >= 7 nT; hourly PLASMA_BETA <= 0.3; qualifying run >= 8 h
+    Strict: 8-hour rolling mean ABS_B >= 8 nT; hourly PLASMA_BETA <= 0.3; qualifying run >= 8 h
+    These are partial proxies, not a reproduction of the paper's detector.
+    Source cadence is 1 hour: the paper's 25/30-minute beta windows cannot be computed.
+    Directional rotation, theta_B chi-square smoothness, vector chi_M/<B>, and thermal-speed
+    criteria are not available in the current feature set. ABS_B rolling std is not a substitute.
+    Loose screen flags 509 hours
+    Strict screen flags 475 hours
 
 B. The report's tree (depth 4, fit to the k-Means cluster ids)
     Identical to the tree saved by src/p4_rules.py: True
@@ -26,11 +31,10 @@ B. The report's tree (depth 4, fit to the k-Means cluster ids)
     ABS_B_roll_mean_3h > 7.45 AND PROTON_DENSITY_roll_std_24h <= 2.071 AND PLASMA_BETA_roll_mean_3h <= 168.1 AND ABS_B > 10.05
         [281 h; 80% in target cluster; 35% catalog ICME; 19% catalog CIR/HSS]
     Term by term vs. Lepping-style:
-    ABS_B_roll_mean_6h >= 10.0  ->  tree uses: ABS_B, ABS_B_roll_mean_3h, ABS_B_roll_mean_6h, ABS_B_roll_std_6h
-    PLASMA_BETA_roll_mean_6h <= 0.5  ->  tree uses: PLASMA_BETA_roll_mean_3h
-    ABS_B_roll_std_6h <= 2.0  ->  tree uses: ABS_B, ABS_B_roll_mean_3h, ABS_B_roll_mean_6h, ABS_B_roll_std_6h
-    Tree-only terms (not in the Lepping-style rule): BY_roll_std_6h, PROTON_DENSITY_roll_std_24h
-    NOTE: the tree's beta thresholds (168.1, 170.3) are far above Lepping's low-beta criterion (~0.5). They separate OMNI fill-value rows (beta = 999.99), so they are not a physical low-beta test.
+    Lepping event-wide mean |B| >= 7/8 nT (loose/strict)  ->  tree uses: ABS_B, ABS_B_roll_mean_3h, ABS_B_roll_mean_6h, ABS_B_roll_std_6h
+    Lepping beta <= 0.3 (paper: 25/30-minute running means)  ->  tree uses: PLASMA_BETA_roll_mean_3h
+    Tree-only terms (outside the two comparable Lepping features): BY_roll_std_6h, PROTON_DENSITY_roll_std_24h
+    NOTE: the tree's beta thresholds (168.1, 170.3) are far above Lepping's beta limit (0.3). They separate OMNI fill-value rows (beta = 999.99), so they are not a physical low-beta test.
     Caveat: this tree describes k-Means clusters, not catalog events, and k-Means clusters 2-4 are mostly OMNI fill values, so some leaves encode data-quality artifacts rather than physics.
 
 C. Catalog-label tree, depth 4 (quiet / ICME / CIR-HSS; trained before 2013-07-01)
@@ -54,10 +58,9 @@ C. Catalog-label tree, depth 4 (quiet / ICME / CIR-HSS; trained before 2013-07-0
     ABS_B > 6.85 AND TEMP > 1.234e+05 AND ABS_B_roll_std_6h <= 2.586 AND PLASMA_BETA_roll_mean_6h <= 0.4858
         [51 h; 47% truly ICME]
     Term by term vs. Lepping-style:
-    ABS_B_roll_mean_6h >= 10.0  ->  tree uses: ABS_B, ABS_B_roll_mean_24h, ABS_B_roll_std_24h, ABS_B_roll_std_6h
-    PLASMA_BETA_roll_mean_6h <= 0.5  ->  tree uses: PLASMA_BETA_roll_mean_6h, PLASMA_BETA_roll_std_24h
-    ABS_B_roll_std_6h <= 2.0  ->  tree uses: ABS_B, ABS_B_roll_mean_24h, ABS_B_roll_std_24h, ABS_B_roll_std_6h
-    Tree-only terms (not in the Lepping-style rule): FLOW_SPEED_roll_mean_3h, PROTON_DENSITY_roll_std_24h, TEMP, TEMP_roll_mean_24h, TEMP_roll_std_24h
+    Lepping event-wide mean |B| >= 7/8 nT (loose/strict)  ->  tree uses: ABS_B, ABS_B_roll_mean_24h, ABS_B_roll_std_24h, ABS_B_roll_std_6h
+    Lepping beta <= 0.3 (paper: 25/30-minute running means)  ->  tree uses: PLASMA_BETA_roll_mean_6h, PLASMA_BETA_roll_std_24h
+    Tree-only terms (outside the two comparable Lepping features): FLOW_SPEED_roll_mean_3h, PROTON_DENSITY_roll_std_24h, TEMP, TEMP_roll_mean_24h, TEMP_roll_std_24h
 
     Leaves predicting CIR/HSS (training hours):
     ABS_B <= 6.85 AND FLOW_SPEED_roll_mean_3h > 459.2 AND TEMP_roll_std_24h <= 1.952e+05 AND FLOW_SPEED_roll_mean_24h > 500.9
