@@ -1,6 +1,8 @@
-"""
-Preprocessing module for the Solar Wind Data Mining Pipeline
-Handles the OMNI data preprocessing, including data cleaning, normalization, and feature engineering
+"""Clean selected OMNI missing-value codes and build rolling-window features.
+
+The generated feature table is consumed by the clustering and comparison stages.
+Some OMNI fill codes (including large FLOW_SPEED, TEMP, and PLASMA_BETA values)
+are not included in the replacement list; see the README limitation notes.
 """
 
 import pandas as pd
@@ -12,7 +14,7 @@ def run_preprocessing():
 
     data_path = os.path.join("data", "omni_data.csv")
 
-    # If path isn't there
+    # Stop here so downstream stages do not run against a missing input file.
     if not os.path.exists(data_path):
         print(f"Error: Data file not found")
         return
@@ -26,11 +28,11 @@ def run_preprocessing():
     df = pd.read_csv(data_path, sep=r'\s+', header=None, names=column_names, engine='python')
     print(f"   Data loaded successfully")
 
-    # Replace missing values with NaN and interpolate linearly
+    # Replace the recognized sentinel values, then fill gaps from neighboring hours.
     df.replace([999.9, 99.9, 9999.9, 99999.0, 999.0, 99.0], np.nan, inplace=True)
     df.interpolate(method='linear', limit_direction='both', inplace=True)
 
-    # Isolate the features and target variable
+    # Keep time fields for alignment; model features are the solar-wind measurements.
     target_features = ['BZ', 'BY', 'BX', 'ABS_B', 'FLOW_SPEED', 'PROTON_DENSITY', 'TEMP', 'PLASMA_BETA']
 
     print("     Making 3, 6, and 24-hour rolling window statistics...")
@@ -43,7 +45,7 @@ def run_preprocessing():
     
     for col in target_features:
         if col in df.columns:
-            # Base feature
+            # Preserve each source measurement alongside its derived features.
             feature_df[col] = df[col]
             for w in windows:
                 # Rolling mean

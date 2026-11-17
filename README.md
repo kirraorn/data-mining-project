@@ -30,11 +30,10 @@ The comparison stages (p5–p8) answer three questions:
 data-mining-project/
 ├── data/
 │   ├── omni_data.csv                 # Raw telemetry data (NASA OMNI hourly, 2012-2014)
-│   └── catalogs/                     # Event catalogs used as ground truth (see its README.md)
+│   └── catalogs/                     # Event catalogs used as comparison labels
 │       ├── HELIO4CAST_ICMECAT_v23.csv
 │       ├── HELIO4CAST_SIRCAT_v10_Wind.csv
-│       ├── cir_catalog_TEMPLATE.csv  # format for an optional cir_catalog.csv
-│       └── README.md                 # provenance, citations, how the labels are built
+│       └── cir_catalog_TEMPLATE.csv  # format for an optional custom cir_catalog.csv
 ├── outputs/                          # Pipeline outputs, metrics, and figures
 ├── src/                              # Source code modules
 │   ├── p1_preprocess.py              # Feature engineering & rolling window calculations
@@ -85,7 +84,7 @@ data-mining-project/
    pip install -r requirements.txt
    ```
 
-4. **Run Program** (about 1 minute):
+4. **Run the pipeline** (runtime depends on hardware and installed libraries):
    ```bash
    python main.py
    ```
@@ -106,8 +105,12 @@ Everything is written to `outputs/` (CSV files are git-ignored; they are regener
 
 ### Method notes
 
-- **Ground truth:** ICMEs from the HELIO4CAST ICMECAT v2.3 (Wind). CIR/HSS intervals are Wind high-speed streams from the HELIO4CAST SIRCAT, a *proxy* for the Hajra & Sunny CIR list (see `data/catalogs/README.md`).
+- **Comparison labels:** ICMEs come from HELIO4CAST ICMECAT v2.3 (Wind). CIR/HSS intervals come from Wind high-speed streams in HELIO4CAST SIRCAT and serve as a *proxy* for a dedicated CIR list. The repository includes the source catalogs in `data/catalogs/`.
 - **Event-level scoring:** a predicted event matches a catalog event when their temporal intersection-over-union is ≥ 0.1; predicted runs bridge gaps ≤ 3 h and need ≥ 3 h. `hour_lift` shows precision relative to the catalog base rate (1.0 = no better than chance).
 - **Train/test split:** supervised models train before 2013-07-01 and are scored after it (48 h gap). Unsupervised clusters used as detectors are chosen on the training period only. Compare methods on the *test* tables.
 - **Lepping comparison** (`src/p7_compare_rules.py`) uses the paper's 7 nT (loose) / 8 nT (strict) mean-field cutoffs, beta <= 0.3, and 8 h minimum duration as partial screens. The project data are hourly, so the paper's 25/30-minute beta windows, directional rotation/smoothness criteria, and thermal-speed criterion cannot be reproduced. These screens are not a full magnetic-cloud detector; scalar `ABS_B` standard deviation is not used as a substitute for directional smoothness.
 - **Known limitation:** `p1_preprocess.py` leaves some OMNI fill codes (flow speed 9999, temperature 9999999, plasma beta 999.99) unmasked, so k-Means clusters 2–4 are mostly fill rows. The matching matrix reports the share of fill rows per cluster (`pct_fill_rows`).
+
+## AI use
+
+Generative AI assisted with reviewing and clarifying project documentation and code comments. The team reviewed the resulting changes and remains responsible for the code, analysis, interpretation, and submitted results. AI was not used to create the source telemetry or event-catalog data.
